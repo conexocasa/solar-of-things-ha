@@ -1,0 +1,84 @@
+name: Bug Report
+description: Report a problem with the Solar of Things integration
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! Please fill in as much detail as possible.
+        **Redact your IOT-Token** — keep only the first and last 4 characters.
+
+  - type: input
+    id: ha_version
+    attributes:
+      label: Home Assistant version
+      placeholder: "e.g. 2024.3.1"
+    validations:
+      required: true
+
+  - type: input
+    id: integration_version
+    attributes:
+      label: Integration version
+      placeholder: "e.g. v2.1.1"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install_method
+    attributes:
+      label: Installation method
+      options:
+        - HACS
+        - Manual
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the bug
+      placeholder: "What happened? What did you expect?"
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant Home Assistant log snippet
+      description: "Settings → System → Logs. Include the endpoint, HTTP status, and JSON response."
+      render: text
+    validations:
+      required: false
+
+  - type: input
+    id: station_id
+    attributes:
+      label: Station ID (18 digits, safe to share)
+      placeholder: "423564214316007425"
+    validations:
+      required: false
+
+  - type: input
+    id: device_id
+    attributes:
+      label: Device ID (18 digits, safe to share)
+      placeholder: "423564214341173249"
+    validations:
+      required: false
+
+  - type: input
+    id: timezone
+    attributes:
+      label: Time zone configured in integration
+      placeholder: "e.g. Asia/Manila"
+    validations:
+      required: false
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else?
+      placeholder: "Inverter model, portal behavior, etc."
+    validations:
+      required: false

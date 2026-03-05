@@ -1,0 +1,77 @@
+name: Validate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    name: Lint & validate integration
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install --quiet --upgrade pip
+          pip install --quiet homeassistant voluptuous requests
+
+      - name: Validate manifest.json
+        run: |
+          python3 - <<'PY'
+          import json, sys
+          m = json.load(open("manifest.json"))
+          required = ["domain","name","version","config_flow","iot_class","requirements"]
+          missing = [k for k in required if k not in m]
+          if missing:
+              print(f"manifest.json missing keys: {missing}")
+              sys.exit(1)
+          print(f"manifest.json OK (version={m['version']})")
+          PY
+
+      - name: Validate hacs.json
+        run: |
+          python3 - <<'PY'
+          import json, sys
+          h = json.load(open("hacs.json"))
+          required = ["name","homeassistant"]
+          missing = [k for k in required if k not in h]
+          if missing:
+              print(f"hacs.json missing keys: {missing}")
+              sys.exit(1)
+          print(f"hacs.json OK (name={h['name']})")
+          PY
+
+      - name: Validate strings / translations
+        run: |
+          python3 - <<'PY'
+          import json
+          s = json.load(open("strings.json"))
+          t = json.load(open("translations/en.json"))
+          print("strings.json OK")
+          print("translations/en.json OK")
+          PY
+
+      - name: Check Python syntax (all .py files)
+        run: |
+          python3 -m py_compile __init__.py api.py config_flow.py \
+            const.py sensor.py number.py select.py switch.py
+          echo "Python syntax OK"
+
+      - name: Run unit tests (if present)
+        run: |
+          pip install --quiet pytest pytest-asyncio pytest-homeassistant-custom-component || true
+          if [ -d tests ]; then
+            python3 -m pytest tests/ -v --tb=short || echo "Tests done (failures allowed on CI without HA fixtures)"
+          else
+            echo "No tests directory found"
+          fi

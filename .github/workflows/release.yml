@@ -1,0 +1,73 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build & publish GitHub release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Read version from manifest
+        id: version
+        run: |
+          VERSION=$(python3 -c "import json; print(json.load(open('manifest.json'))['version'])")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Build HACS release ZIP
+        run: |
+          STAGE=release_stage
+          mkdir -p "$STAGE/custom_components/solar_of_things/translations"
+
+          # Integration source files
+          for f in __init__.py api.py config_flow.py const.py \
+                   sensor.py number.py select.py switch.py \
+                   manifest.json strings.json; do
+            cp "$f" "$STAGE/custom_components/solar_of_things/$f"
+          done
+          cp translations/en.json "$STAGE/custom_components/solar_of_things/translations/en.json"
+
+          # Root-level metadata / docs
+          for f in hacs.json README.md LICENSE CHANGELOG.md \
+                   INSTALLATION.md QUICKSTART.md \
+                   CONTROL_FEATURES.md EXAMPLES.md; do
+            cp "$f" "$STAGE/$f"
+          done
+
+          cd "$STAGE"
+          zip -r "../solar-of-things-ha.zip" . > /dev/null
+          cd ..
+          echo "zip built:"
+          ls -lh solar-of-things-ha.zip
+
+      - name: Extract changelog section for this tag
+        id: changelog
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          # Grab text between the current version header and the next one
+          NOTES=$(awk "/^## \[${TAG#v}\]/{flag=1; next} /^## \[/{flag=0} flag" CHANGELOG.md)
+          # Fallback: use first 50 lines
+          if [ -z "$NOTES" ]; then
+            NOTES=$(head -50 CHANGELOG.md)
+          fi
+          # Write to file (handles multi-line output)
+          printf '%s' "$NOTES" > release_notes.txt
+          echo "notes_file=release_notes.txt" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release & upload asset
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: "${{ github.ref_name }} — Solar of Things (Siseli) HA Integration"
+          body_path: release_notes.txt
+          draft: true
+          files: solar-of-things-ha.zip

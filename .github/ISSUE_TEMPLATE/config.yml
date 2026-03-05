@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Home Assistant Community (Solar of Things thread)
+    url: https://community.home-assistant.io
+    about: Ask general Home Assistant questions here
+  - name: Siseli / Solar of Things Portal
+    url: https://solar.siseli.com
+    about: Manage your solar system and retrieve API credentials
+  - name: Reference API Client
+    url: https://github.com/Hyllesen/solar-of-things-solar-usage
+    about: Node.js reference client showing the API behavior used by this integration
