@@ -1,0 +1,84 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Add Solar of Things Station",
+        "description": "Configure your Solar of Things station. You can add multiple stations by configuring this integration multiple times.\n\nTo find your credentials:\n1. Log into https://solar.siseli.com\n2. Open browser developer tools (F12) → Network tab\n3. Refresh the page and look at API requests\n4. Copy the IOT-Token from request headers\n5. Find stationId and deviceId in the request URLs or payloads\n\nMore info: {docs_url}",
+        "data": {
+          "iot_token": "IOT Token",
+          "station_id": "Station ID (required)",
+          "device_id": "Device ID (optional; leave blank to auto-discover all devices)",
+          "time_zone": "Time zone (IOT-Time-Zone header)"
+        }
+      },
+      "add_another": {
+        "title": "Add Another Station?",
+        "description": "You have added {station_count} station(s). Would you like to add another?",
+        "data": {
+          "add_another": "Add another station"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect to Solar of Things API. Please check your IOT Token and IDs.",
+      "unknown": "Unexpected error occurred. Please check the logs."
+    },
+    "abort": {
+      "already_configured": "This station is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Solar of Things Options",
+        "data": {
+          "update_interval": "Update interval (minutes)"
+        }
+      }
+    }
+  },
+  "entity": {
+    "number": {
+      "battery_charge_limit": {
+        "name": "Battery Charge Limit"
+      },
+      "battery_discharge_limit": {
+        "name": "Battery Discharge Limit"
+      },
+      "grid_charge_limit": {
+        "name": "Grid Charge Limit"
+      }
+    },
+    "select": {
+      "operating_mode": {
+        "name": "Operating Mode",
+        "state": {
+          "self_use": "Self-Use",
+          "time_of_use": "Time-of-Use",
+          "backup": "Backup",
+          "grid_tie": "Grid-Tie",
+          "off_grid": "Off-Grid"
+        }
+      },
+      "battery_priority": {
+        "name": "Battery Priority",
+        "state": {
+          "solar_first": "Solar First",
+          "battery_first": "Battery First",
+          "grid_first": "Grid First"
+        }
+      }
+    },
+    "switch": {
+      "grid_charging": {
+        "name": "Grid Charging"
+      },
+      "grid_feed_in": {
+        "name": "Grid Feed-In"
+      },
+      "backup_mode": {
+        "name": "Backup Mode"
+      }
+    }
+  }
+}
