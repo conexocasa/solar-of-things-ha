@@ -296,7 +296,10 @@ class SolarOfThingsAPI:
 
         Uses the IOT Open Platform signed request format discovered from the
         portal JS bundle.  The login endpoint is:
-          POST https://test.solar.siseli.com/apis/login/account
+          POST https://solar.siseli.com/apis/login/account
+
+        The password is sent as MD5(plaintext_password) lowercase hex — this
+        is how the portal processes it before transmitting.
 
         Raises AuthenticationError on bad credentials, or requests.RequestException
         on network failure.  Safe to call from a background thread.
@@ -307,9 +310,12 @@ class SolarOfThingsAPI:
         _LOGGER.debug("SolarOfThings: logging in as %s", self._user_id)
 
         import json as _json
+        # The portal sends the password as MD5(plaintext_password) lowercase hex.
+        # Sending plaintext returns code 7 "password error" even with valid creds.
+        password_md5 = hashlib.md5(self._password.encode("utf-8")).hexdigest()
         payload = {
             "account": self._user_id,
-            "password": self._password,
+            "password": password_md5,
         }
         body_bytes = _json.dumps(payload, separators=(",", ":")).encode("utf-8")
 

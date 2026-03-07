@@ -18,10 +18,11 @@ CONF_ACCESS_TOKEN_EXPIRES = "access_token_expires"   # ISO-8601 string
 CONF_REFRESH_TOKEN_EXPIRES = "refresh_token_expires" # ISO-8601 string
 
 # ─── API bases ─────────────────────────────────────────────────────────────────
-# The portal JS bundle uses test.solar.siseli.com for auth/login endpoints
-# and solar.siseli.com for data (device-state, station) endpoints.
+# Both auth and data endpoints live on the production server solar.siseli.com.
+# The portal JS bundle embeds both test/prod AppIDs; AppID rBrTRfAPXz is the
+# one accepted by solar.siseli.com (confirmed by live API testing 2026-03-07).
 API_BASE_URL        = "https://solar.siseli.com"         # data endpoints
-API_AUTH_BASE_URL   = "https://test.solar.siseli.com"    # auth / login endpoints
+API_AUTH_BASE_URL   = "https://solar.siseli.com"         # auth / login endpoints
 
 # ─── Auth endpoints (discovered from portal JS bundle) ─────────────────────────
 # The login endpoint requires IOT-Open-AppID signing (see api.py _sign_request).
@@ -29,8 +30,10 @@ API_LOGIN           = "/apis/login/account"              # POST + signed headers
 API_REFRESH_TOKEN   = "/login/refresh/access/token"      # POST, no token needed
 
 # ─── IOT Open Platform app credentials (embedded in portal umi.js) ────────────
-IOT_APP_ID          = "JO4DAiNeys"
-IOT_APP_SECRET_ENC  = "VK51roUwyT4CJGcDWRp17WMhzX4F702I10fWc0FnC6A="
+# rBrTRfAPXz is the production AppID accepted by solar.siseli.com.
+# JO4DAiNeys is the test AppID (accepted only by test.solar.siseli.com).
+IOT_APP_ID          = "rBrTRfAPXz"
+IOT_APP_SECRET_ENC  = "I4D0KRr2339z3pQ/at91V9BpFAOe54DaTafwSm6suIQ="
 
 # ─── Data endpoints ────────────────────────────────────────────────────────────
 API_TIME_SERIES    = "/apis/deviceState/simple/attribute/keys/history/v1"

@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.1] - 2026-03-07
+
+### Fixed
+- **Correct production AppID and server** -- the IOT Open Platform AppID has been
+  corrected to `rBrTRfAPXz` (production) targeting `https://solar.siseli.com`.
+  The previous release used the test-environment AppID (`JO4DAiNeys`) which was
+  only accepted by `test.solar.siseli.com`, causing "account error" (code 20007)
+  for every real user account.
+- **Password is now MD5-hashed before transmission** -- the Siseli portal sends
+  `MD5(plaintext_password)` (lowercase hex) in the login payload. Sending plain
+  text returned code 7 "password error" even with valid credentials. The login
+  method now applies `hashlib.md5(password).hexdigest()` before building the
+  JSON body, matching the portal behaviour confirmed by live API testing.
+
+### Changed
+- `API_AUTH_BASE_URL` changed from `https://test.solar.siseli.com` to `https://solar.siseli.com`.
+- `IOT_APP_ID` changed from `JO4DAiNeys` to `rBrTRfAPXz`.
+- `IOT_APP_SECRET_ENC` updated to the production-AppID encrypted secret.
+
 ## [2.3.0] - 2026-03-07
 
 ### Changed
