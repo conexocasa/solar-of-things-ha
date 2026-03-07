@@ -38,8 +38,11 @@ IOT_APP_SECRET_ENC  = "I4D0KRr2339z3pQ/at91V9BpFAOe54DaTafwSm6suIQ="
 # ─── Data endpoints ────────────────────────────────────────────────────────────
 API_TIME_SERIES    = "/apis/deviceState/simple/attribute/keys/history/v1"
 API_MONTHLY_SUMMARY = "/apis/stationOverView/stateAttributeSummary/category/yearly"
-API_SETTINGS_GET   = "/api/device/settings/v1"
-API_SETTINGS_SET   = "/api/device/settings/update/v1"
+# Remote device config endpoints (discovered 2026-03-07 from live API testing).
+# These accept a plain IOT-Token header (no IOT-Open-Sign) and use the device ID
+# as a query parameter.  Write sends one setting key+value per call.
+API_SETTINGS_GET   = "/apis/remote/device/configs/cache/get"  # ?deviceId=<id>
+API_SETTINGS_SET   = "/apis/remote/device/config/write"       # ?deviceId=<id>
 API_DEVICE_LIST    = "/apis/device/list"
 
 # ─── Token refresh window ──────────────────────────────────────────────────────

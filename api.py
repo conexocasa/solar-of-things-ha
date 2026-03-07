@@ -708,10 +708,36 @@ class SolarOfThingsAPI:
         return monthly
 
     # ─── Device settings ───────────────────────────────────────────────────────
+    # The remote config endpoints require only a plain IOT-Token header (which the
+    # session already carries) and pass deviceId as a URL query parameter rather
+    # than in the JSON body.
+
+    def _write_setting(self, device_id: str, key: str, value: Any) -> None:
+        """Write a single device setting key=value via the remote config write API."""
+        self._ensure_token_valid()
+        url = f"{API_BASE_URL}{API_SETTINGS_SET}?deviceId={device_id}"
+        payload = {"deviceId": device_id, "key": key, "value": value}
+        resp = self.session.post(url, json=payload, timeout=30)
+        resp.raise_for_status()
+        data = resp.json()
+        if data.get("code") not in (0, None):
+            raise RuntimeError(
+                f"Settings write error code={data.get('code')} "
+                f"message={data.get('message')} (key={key})"
+            )
 
     def get_device_settings(self, device_id: str) -> dict[str, Any]:
-        """Fetch current device settings."""
-        data = self._post(API_SETTINGS_GET, {"deviceId": device_id})
+        """Fetch the cached device settings from the remote config API.
+
+        Returns a flat dict of {settingKey: settingObject} where each value
+        contains at least 'key', 'value', and 'valueDisplay' fields.
+        The endpoint accepts a plain IOT-Token header (no IOT-Open-Sign).
+        """
+        self._ensure_token_valid()
+        url = f"{API_BASE_URL}{API_SETTINGS_GET}?deviceId={device_id}"
+        resp = self.session.post(url, json={}, timeout=30)
+        resp.raise_for_status()
+        data = resp.json()
         if data.get("code") not in (0, None):
             raise RuntimeError(
                 f"Settings fetch error code={data.get('code')} "
@@ -723,36 +749,62 @@ class SolarOfThingsAPI:
     fetch_settings = get_device_settings
 
     def update_device_settings(self, device_id: str, settings: dict[str, Any]) -> None:
-        """Update one or more device settings."""
-        payload = {"deviceId": device_id, **settings}
-        data = self._post(API_SETTINGS_SET, payload)
-        if data.get("code") not in (0, None):
-            raise RuntimeError(
-                f"Settings update error code={data.get('code')} "
-                f"message={data.get('message')}"
-            )
+        """Write multiple settings (one API call per key)."""
+        for key, value in settings.items():
+            self._write_setting(device_id, key, value)
 
     # ─── Convenience control helpers (called by select.py / switch.py) ─────────
+    # Key names are the real device attribute keys returned by get_device_settings.
+    # Output Source Priority:   USO=0, SUB=1, SBU=2
+    # Charger Source Priority:  CSO=0, SNU=1, OSO=2
+    # batteryPowerLimitingSetting: 0=OFF, 1=ON  (GRID switch)
+    # acInputRangeSetting:         0=Appliance, 1=UPS
+
+    # Operating-mode select maps HA option strings to integer values
+    _OUTPUT_MODE_MAP: dict[str, int] = {
+        "Utility First (USO)": 0,
+        "Solar First (SUB)": 1,
+        "Solar+Battery First (SBU)": 2,
+    }
+    _OUTPUT_MODE_REVERSE: dict[int, str] = {v: k for k, v in _OUTPUT_MODE_MAP.items()}
+
+    # Charger-priority select
+    _CHARGER_PRIORITY_MAP: dict[str, int] = {
+        "Solar + Utility (CSO)": 0,
+        "Solar First (SNU)": 1,
+        "Solar Only (OSO)": 2,
+    }
+    _CHARGER_PRIORITY_REVERSE: dict[int, str] = {v: k for k, v in _CHARGER_PRIORITY_MAP.items()}
 
     def set_operating_mode(self, device_id: str, mode: str) -> None:
-        """Set the inverter operating mode (e.g. 'Self-Use', 'Backup')."""
-        self.update_device_settings(device_id, {"operatingMode": mode})
+        """Set Output Source Priority.  mode is one of _OUTPUT_MODE_MAP keys."""
+        value = self._OUTPUT_MODE_MAP.get(mode)
+        if value is None:
+            raise ValueError(f"Unknown operating mode: {mode!r}. "
+                             f"Valid options: {list(self._OUTPUT_MODE_MAP)!r}")
+        self._write_setting(device_id, "outputSourcePrioritySetting", value)
 
     def set_battery_priority(self, device_id: str, mode: str) -> None:
-        """Set battery charging priority (e.g. 'Solar First', 'Grid First')."""
-        self.update_device_settings(device_id, {"batteryPriority": mode})
+        """Set Charger Source Priority.  mode is one of _CHARGER_PRIORITY_MAP keys."""
+        value = self._CHARGER_PRIORITY_MAP.get(mode)
+        if value is None:
+            raise ValueError(f"Unknown battery priority: {mode!r}. "
+                             f"Valid options: {list(self._CHARGER_PRIORITY_MAP)!r}")
+        self._write_setting(device_id, "chargerSourcePrioritySetting", value)
 
     def set_grid_charging(self, device_id: str, enabled: bool) -> None:
-        """Enable or disable grid charging."""
-        self.update_device_settings(device_id, {"gridChargingEnabled": enabled})
+        """Set AC Input Range: Appliance (0, grid charging allowed) / UPS (1, bypass)."""
+        self._write_setting(device_id, "acInputRangeSetting", 0 if enabled else 1)
 
     def set_grid_feed_in(self, device_id: str, enabled: bool) -> None:
-        """Enable or disable grid feed-in (export)."""
-        self.update_device_settings(device_id, {"gridFeedInEnabled": enabled})
+        """Enable or disable the GRID grid switch (batteryPowerLimitingSetting)."""
+        self._write_setting(device_id, "batteryPowerLimitingSetting", 1 if enabled else 0)
 
     def set_backup_mode(self, device_id: str, enabled: bool) -> None:
-        """Enable or disable backup (reserve) mode."""
-        self.update_device_settings(device_id, {"backupModeEnabled": enabled})
+        """Set Output Source Priority to SBU (backup/off-grid priority) when True,
+        or SUB (solar-first, grid-supplemented) when False."""
+        value = 2 if enabled else 1   # SBU=2 (battery before grid), SUB=1
+        self._write_setting(device_id, "outputSourcePrioritySetting", value)
 
     def test_connection(self, station_id: str) -> bool:
         """Return True if we can reach the device-list endpoint successfully."""

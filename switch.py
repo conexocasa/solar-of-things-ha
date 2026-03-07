@@ -35,6 +35,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     async_add_entities(entities)
 
 
+def _setting_value(coordinator_data: dict | None, key: str) -> int | None:
+    """Extract the integer value for a device setting key from coordinator data."""
+    settings = ((coordinator_data or {}).get("settings") or {})
+    entry = settings.get(key)
+    if entry is None:
+        return None
+    raw = entry.get("value") if isinstance(entry, dict) else entry
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        return None
+
+
 class _BaseSwitch(CoordinatorEntity, SwitchEntity):
     def __init__(self, api, coordinator, station_id: str, device_id: str, device_name: str) -> None:
         super().__init__(coordinator)
@@ -55,16 +68,26 @@ class _BaseSwitch(CoordinatorEntity, SwitchEntity):
 
 
 class SolarOfThingsGridChargingSwitch(_BaseSwitch):
+    """Switch for AC Input Range setting (acInputRangeSetting).
+
+    0 = Appliance mode – wide input voltage range, grid charging allowed.
+    1 = UPS mode – narrow voltage range, stricter bypass behaviour.
+    The switch reports ON when the inverter is in Appliance (grid-charging) mode.
+    """
+
     def __init__(self, api, coordinator, station_id: str, device_id: str, device_name: str) -> None:
         super().__init__(api, coordinator, station_id, device_id, device_name)
-        self._attr_name = f"{device_name} Grid Charging"
+        self._attr_name = f"{device_name} Grid Charging (AC Input Range)"
         self._attr_unique_id = f"{DOMAIN}_{station_id}_{device_id}_grid_charging"
         self._attr_device_class = SwitchDeviceClass.SWITCH
         self._attr_icon = "mdi:transmission-tower"
 
     @property
-    def is_on(self):
-        return bool(((self.coordinator.data or {}).get("settings") or {}).get("gridChargingEnabled", False))
+    def is_on(self) -> bool | None:
+        val = _setting_value(self.coordinator.data, "acInputRangeSetting")
+        if val is None:
+            return None
+        return val == 0  # 0=Appliance (charging OK), 1=UPS (bypass)
 
     async def async_turn_on(self, **kwargs):
         await self.hass.async_add_executor_job(self._api.set_grid_charging, self._device_id, True)
@@ -76,6 +99,12 @@ class SolarOfThingsGridChargingSwitch(_BaseSwitch):
 
 
 class SolarOfThingsGridFeedInSwitch(_BaseSwitch):
+    """Switch for GRID grid switch (batteryPowerLimitingSetting).
+
+    0 = OFF (grid switch disabled / feed-in off).
+    1 = ON  (grid switch enabled / feed-in on).
+    """
+
     def __init__(self, api, coordinator, station_id: str, device_id: str, device_name: str) -> None:
         super().__init__(api, coordinator, station_id, device_id, device_name)
         self._attr_name = f"{device_name} Grid Feed-In"
@@ -84,8 +113,11 @@ class SolarOfThingsGridFeedInSwitch(_BaseSwitch):
         self._attr_icon = "mdi:transmission-tower-export"
 
     @property
-    def is_on(self):
-        return bool(((self.coordinator.data or {}).get("settings") or {}).get("gridFeedInEnabled", False))
+    def is_on(self) -> bool | None:
+        val = _setting_value(self.coordinator.data, "batteryPowerLimitingSetting")
+        if val is None:
+            return None
+        return val == 1  # 1=ON
 
     async def async_turn_on(self, **kwargs):
         await self.hass.async_add_executor_job(self._api.set_grid_feed_in, self._device_id, True)
@@ -97,16 +129,28 @@ class SolarOfThingsGridFeedInSwitch(_BaseSwitch):
 
 
 class SolarOfThingsBackupModeSwitch(_BaseSwitch):
+    """Switch that maps to Output Source Priority SBU (backup/off-grid biased).
+
+    ON  → outputSourcePrioritySetting = 2 (SBU: Solar+Battery first, grid last).
+    OFF → outputSourcePrioritySetting = 1 (SUB: Solar first, grid as supplement).
+
+    Note: turning this switch ON will also change the Operating Mode select entity
+    to 'Solar+Battery First (SBU)', which is the expected behaviour.
+    """
+
     def __init__(self, api, coordinator, station_id: str, device_id: str, device_name: str) -> None:
         super().__init__(api, coordinator, station_id, device_id, device_name)
-        self._attr_name = f"{device_name} Backup Mode"
+        self._attr_name = f"{device_name} Backup Mode (SBU Priority)"
         self._attr_unique_id = f"{DOMAIN}_{station_id}_{device_id}_backup_mode"
         self._attr_device_class = SwitchDeviceClass.SWITCH
         self._attr_icon = "mdi:battery-lock"
 
     @property
-    def is_on(self):
-        return bool(((self.coordinator.data or {}).get("settings") or {}).get("backupModeEnabled", False))
+    def is_on(self) -> bool | None:
+        val = _setting_value(self.coordinator.data, "outputSourcePrioritySetting")
+        if val is None:
+            return None
+        return val == 2  # SBU
 
     async def async_turn_on(self, **kwargs):
         await self.hass.async_add_executor_job(self._api.set_backup_mode, self._device_id, True)

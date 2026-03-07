@@ -1,3 +1,25 @@
+## [2.3.3] - 2026-03-07
+
+### Fixed
+- **404 Not Found on device settings**: The settings endpoints `/api/device/settings/v1`
+  and `/api/device/settings/update/v1` do not exist on `solar.siseli.com`. Replaced with the
+  correct remote-config API endpoints discovered from the live portal JS bundle:
+  - **Read**: `POST /apis/remote/device/configs/cache/get?deviceId=<id>` (plain `IOT-Token` header)
+  - **Write**: `POST /apis/remote/device/config/write?deviceId=<id>` (body `{deviceId, key, value}`)
+
+### Changed
+- `select.py` — **Operating Mode** select now uses real API key `outputSourcePrioritySetting`
+  with options `Utility First (USO)` / `Solar First (SUB)` / `Solar+Battery First (SBU)`.
+- `select.py` — **Battery Priority** select now uses real API key `chargerSourcePrioritySetting`
+  with options `Solar + Utility (CSO)` / `Solar First (SNU)` / `Solar Only (OSO)`.
+- `switch.py` — **Grid Feed-In** switch maps to `batteryPowerLimitingSetting` (0=OFF, 1=ON).
+- `switch.py` — **Grid Charging** switch maps to `acInputRangeSetting` (0=Appliance/ON, 1=UPS/OFF).
+- `switch.py` — **Backup Mode** switch maps to `outputSourcePrioritySetting` SBU=2 (ON) / SUB=1 (OFF).
+- `api.py` — `get_device_settings` / `fetch_settings` now POST to the correct URL with query
+  parameter and plain `IOT-Token` header (no IOT-Open signing required for this endpoint).
+- `api.py` — `_write_setting` helper added; `set_*` control methods updated with correct
+  API key names and integer value mappings (no longer sending arbitrary string names).
+
 # Changelog
 
 All notable changes to this project will be documented in this file.
